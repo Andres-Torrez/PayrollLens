@@ -10,11 +10,13 @@ load_dotenv()
 # Importamos el router de upload
 from app.routes import upload
 from app.routes import extraction
+from app.db.database import init_db
 
 # Crear carpeta uploads si no existe
 UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
 
+init_db()
 
 app = FastAPI(
     title="NominaFlow API",

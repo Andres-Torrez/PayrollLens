@@ -1,34 +1,56 @@
-from fastapi import APIRouter, HTTPException, status
+import json
 from pathlib import Path
+from typing import List
 
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+
+from app.db.crud import get_extraction, get_extractions, save_extraction
+from app.db.database import get_db
+from app.models.schemas import ExtractionMetadata, ExtractionRecord, ValidationResult
+from app.routes.upload import UPLOAD_DIR
 from app.services.ocr import extract_from_file
 from app.services.validator import validate_extraction
-from app.models.schemas import ValidationResult, ExtractionMetadata
 
 router = APIRouter()
 
-UPLOAD_DIR = Path("uploads")
+MIME_BY_SUFFIX = {
+    ".pdf": "application/pdf",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+}
 
 
-@router.post(
-    "/extract/{file_id}",
-    response_model=ValidationResult,
-    summary="Extraer y validar nómina",
-    description=(
-        "Extrae datos de la nómina con OCR/LLM y aplica reglas de validación "
-        "(IBAN, ingresos, fecha, nombre, empresa). Devuelve validated_data + flags."
-    ),
-)
-async def extract_and_validate(file_id: str):
+def _mime_from_path(file_path: Path) -> str:
+    return MIME_BY_SUFFIX.get(file_path.suffix.lower(), "application/octet-stream")
+
+
+def _record_to_dict(record) -> dict:
+    return {
+        "id": record.id,
+        "filename": record.filename,
+        "mime_type": record.mime_type,
+        "size_bytes": record.size_bytes,
+        "nombre_trabajador": record.nombre_trabajador,
+        "nombre_empresa": record.nombre_empresa,
+        "ingresos_brutos": record.ingresos_brutos,
+        "ingresos_netos": record.ingresos_netos,
+        "fecha_nomina": record.fecha_nomina,
+        "iban": record.iban,
+        "overall_confidence": record.overall_confidence,
+        "status": record.status,
+        "validation_flags": json.loads(record.validation_flags) if record.validation_flags else [],
+        "created_at": record.created_at,
+        "updated_at": record.updated_at,
+    }
+
+
+@router.post("/extract/{file_id}", response_model=ValidationResult)
+async def extract_and_validate(file_id: str, db: Session = Depends(get_db)):
     """
-    Procesa un archivo subido con OCR y VALIDA los resultados.
-
-    1. Busca el archivo en uploads/
-    2. Extrae datos con GitHub Models (LLM)
-    3. Valida con reglas de negocio (IBAN, ingresos, fecha...)
-    4. Devuelve datos + flags de error + confianza global
+    Procesa un archivo con OCR, VALIDA los resultados, y GUARDA en SQLite.
     """
-
     matching_files = list(UPLOAD_DIR.glob(f"{file_id}_*"))
 
     if not matching_files:
@@ -47,18 +69,52 @@ async def extract_and_validate(file_id: str):
             detail=f"Error en OCR: {str(e)}",
         )
 
-    validation = validate_extraction(extraction)
+    validation_dict = validate_extraction(extraction)
+    validation = ValidationResult(**validation_dict)
 
-    return ValidationResult(
-        validated_data=validation["validated_data"],
-        flags=validation["flags"],
-        overall_confidence=validation["overall_confidence"],
-        status=validation["status"],
-        flag_count=validation["flag_count"],
-        extraction_metadata=ExtractionMetadata(
-            file_id=file_id,
-            filename=file_path.name,
-            llm_confidence=extraction.confidence,
-            raw_llm_response=extraction.raw_llm_response,
-        ),
+    save_extraction(
+        db=db,
+        file_id=file_id,
+        filename=file_path.name,
+        mime_type=_mime_from_path(file_path),
+        size_bytes=file_path.stat().st_size,
+        extraction=extraction,
+        validation=validation,
     )
+
+    validation.extraction_metadata = ExtractionMetadata(
+        file_id=file_id,
+        filename=file_path.name,
+        llm_confidence=extraction.confidence,
+        raw_llm_response=extraction.raw_llm_response,
+        saved_to_database=True,
+    )
+
+    return validation
+
+
+@router.get("/extractions/{file_id}", response_model=ExtractionRecord)
+async def get_extraction_record(file_id: str, db: Session = Depends(get_db)):
+    """
+    Recupera una extracción guardada por su file_id.
+    Útil para mostrar el resultado sin re-procesar el OCR.
+    """
+    record = get_extraction(db, file_id)
+
+    if not record:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No se encontró extracción con file_id: {file_id}",
+        )
+
+    return _record_to_dict(record)
+
+
+@router.get("/extractions", response_model=List[ExtractionRecord])
+async def list_extractions(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    """
+    Lista todas las extracciones guardadas (historial).
+    Ordenadas por fecha descendente (las más nuevas primero).
+    """
+    records = get_extractions(db, skip=skip, limit=limit)
+    return [_record_to_dict(record) for record in records]

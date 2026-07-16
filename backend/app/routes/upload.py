@@ -78,12 +78,11 @@ async def upload_file(file: UploadFile = File(...)):
     # --- Generar ID único y guardar ---
     file_id = str(uuid.uuid4())  # Ej: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
     
-    # Nombre seguro: file_id + extensión original
-    # Ej: "a1b2c3d4... .pdf"
-    extension = Path(file.filename).suffix.lower()
-    safe_filename = f"{file_id}{extension}"
+    # Nombre seguro: file_id + nombre original sanitizado
+    safe_original = re.sub(r'[^\w\s.-]', '', file.filename).replace(' ', '_')
+    safe_filename = f"{file_id}_{safe_original}"
     file_path = UPLOAD_DIR / safe_filename
-    
+
     # Guardar en disco
     with open(file_path, "wb") as f:
         f.write(contents)

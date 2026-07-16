@@ -62,7 +62,7 @@ Analiza TODAS las páginas de la imagen de esta nómina y extrae los siguientes 
 - nombre_empresa: nombre de la empresa o razón social
 - ingresos_brutos: TOTAL DEVENGOS / BRUTO (solo número, sin símbolos de moneda ni puntos de miles)
 - ingresos_netos: LÍQUIDO A PERCIBIR / NETO (solo número, sin símbolos de moneda). Suele estar en la segunda página.
-- fecha_nomina: período de la nómina (formato: MM/YYYY o DD/MM/YYYY)
+- fecha_nomina: período de liquidación (preferir MM/YYYY, ej. 07/2026). NO uses la fecha de pago.
 - iban: número de cuenta bancaria IBAN completo (debe empezar por ES y tener 24 caracteres, sin espacios). Suele estar en "DATOS BANCARIOS".
 
 REGLAS ESTRICTAS:
