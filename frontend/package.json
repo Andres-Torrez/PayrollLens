@@ -1,0 +1,10 @@
+{
+  "name": "nominaflow-frontend",
+  "private": true,
+  "scripts": {
+    "dev": "npm run dev --prefix next-monorepo",
+    "build": "npm run build --prefix next-monorepo",
+    "lint": "npm run lint --prefix next-monorepo",
+    "typecheck": "npm run typecheck --prefix next-monorepo"
+  }
+}

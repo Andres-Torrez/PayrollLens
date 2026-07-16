@@ -34,7 +34,7 @@ class ExtractionDB(Base):
     filename = Column(String, nullable=False)
     mime_type = Column(String, nullable=False)
     size_bytes = Column(Integer, nullable=False)
-    
+
     # Datos extraídos por el LLM
     nombre_trabajador = Column(String, nullable=True)
     nombre_empresa = Column(String, nullable=True)
@@ -42,13 +42,13 @@ class ExtractionDB(Base):
     ingresos_netos = Column(Float, nullable=True)
     fecha_nomina = Column(String, nullable=True)
     iban = Column(String, nullable=True)
-    
+
     # Metadata del proceso
     raw_llm_response = Column(Text, nullable=True)  # Respuesta cruda del LLM
     validation_flags = Column(Text, nullable=True)  # JSON string con flags
     overall_confidence = Column(String, default="high")  # high | medium | low
     status = Column(String, default="pending")  # pending | validated | needs_review | error
-    
+
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
