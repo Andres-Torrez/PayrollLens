@@ -1,6 +1,15 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
+from pathlib import Path
+
+# Importamos el router de upload
+from app.routes import upload
+
+# Crear carpeta uploads si no existe
+UPLOAD_DIR = Path("uploads")
+UPLOAD_DIR.mkdir(exist_ok=True)
+
 
 app = FastAPI(
     title="NominaFlow API",
@@ -16,6 +25,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# --- Endpoint de health ---
 @app.get("/health")
 async def health_check():
     return {
@@ -23,6 +33,11 @@ async def health_check():
         "service": "nominaflow",
         "version": "0.1.0"
     }
+
+# --- Registrar el router de upload ---
+# prefix="/api" → todas las rutas de upload tendrán /api/...
+# tags=["upload"] → agrupa en la documentación de /docs
+app.include_router(upload.router, prefix="/api", tags=["upload"])
 
 if __name__ == "__main__":
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
