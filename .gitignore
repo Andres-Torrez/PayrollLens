@@ -28,5 +28,9 @@ Thumbs.db
 # Uploads (no subimos archivos de usuario al repo)
 backend/uploads/
 
+# SQLite local
+*.db
+*.db-journal
+
 # uv
 uv.lock

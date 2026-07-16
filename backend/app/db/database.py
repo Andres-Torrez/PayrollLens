@@ -1,16 +1,19 @@
 import os
+from pathlib import Path
+
 from sqlalchemy import create_engine, Column, String, Float, DateTime, Text, Integer
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
 
-# SQLite: archivo local, zero-config
-# check_same_thread=False es necesario para FastAPI (async)
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./nominaflow.db")
+# SQLite: ruta absoluta al directorio backend/ (no depende del CWD del proceso)
+_BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
+_DEFAULT_DB_PATH = _BACKEND_DIR / "nominaflow.db"
+DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{_DEFAULT_DB_PATH.as_posix()}")
 
 engine = create_engine(
     DATABASE_URL,
-    connect_args={"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+    connect_args={"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {},
 )
 
 # Fábrica de sesiones
