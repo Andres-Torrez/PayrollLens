@@ -1,10 +1,15 @@
+from pathlib import Path
+
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
-from pathlib import Path
+
+load_dotenv()
 
 # Importamos el router de upload
 from app.routes import upload
+from app.routes import extraction
 
 # Crear carpeta uploads si no existe
 UPLOAD_DIR = Path("uploads")
@@ -38,6 +43,8 @@ async def health_check():
 # prefix="/api" → todas las rutas de upload tendrán /api/...
 # tags=["upload"] → agrupa en la documentación de /docs
 app.include_router(upload.router, prefix="/api", tags=["upload"])
+app.include_router(extraction.router, prefix="/api", tags=["extraction-validation"])
+
 
 if __name__ == "__main__":
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)

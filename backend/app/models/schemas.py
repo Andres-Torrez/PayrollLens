@@ -1,17 +1,44 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from typing import Optional, List, Dict, Any
 from datetime import datetime
-from typing import Optional
 
 
 class UploadResponse(BaseModel):
+    file_id: str
+    filename: str
+    mime_type: str
+    status: str
+    message: str
+    size_bytes: int
+    created_at: datetime
+
+
+class NominaExtraction(BaseModel):
+    nombre_trabajador: Optional[str] = Field(None, description="Nombre completo del empleado")
+    nombre_empresa: Optional[str] = Field(None, description="Nombre de la empresa")
+    ingresos_brutos: Optional[float] = Field(None, description="Total devengado/bruto")
+    ingresos_netos: Optional[float] = Field(None, description="Total neto a percibir")
+    fecha_nomina: Optional[str] = Field(None, description="Período de la nómina (MM/YYYY o DD/MM/YYYY)")
+    iban: Optional[str] = Field(None, description="IBAN completo (24 caracteres, empieza por ES)")
+    confidence: str = Field("high", description="high | medium | low")
+    raw_llm_response: Optional[str] = Field(None, description="Respuesta cruda del LLM")
+
+
+class ExtractionMetadata(BaseModel):
+    """Metadata del proceso OCR/LLM."""
+    file_id: str
+    filename: str
+    llm_confidence: str
+    raw_llm_response: Optional[str] = None
+
+
+class ValidationResult(BaseModel):
     """
-    Respuesta del endpoint de subida.
-    El frontend recibe esto y sabe que el archivo fue recibido.
+    Resultado de la extracción + validación de una nómina.
     """
-    file_id: str          # UUID único para trackear este archivo
-    filename: str           # Nombre original del archivo
-    mime_type: str        # application/pdf, image/jpeg, image/png
-    status: str           # "received", "processing", "done", "error"
-    message: str          # Mensaje amigable para el usuario
-    size_bytes: int       # Tamaño del archivo en bytes
-    created_at: datetime  # Cuándo se subió
+    validated_data: Dict[str, Any]
+    flags: List[Dict[str, str]]
+    overall_confidence: str  # high | medium | low
+    status: str  # validated | needs_review | error
+    flag_count: Dict[str, int]
+    extraction_metadata: Optional[ExtractionMetadata] = None
