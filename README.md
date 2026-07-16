@@ -1,12 +1,12 @@
-# NominaAI
+# NominaFlow
 
-Extractor inteligente de nóminas con OCR + LLM + validación de datos.
+Extracción inteligente de nóminas con OCR + LLM + validación de datos.
 
 &gt; Challenge técnico para Kontaktu AI — Julio 2026
 
 ## Visión
 
-Una web app donde subes una nómina (PDF o imagen) y la IA extrae:
+NominaFlow es una web app donde subes una nómina (PDF o imagen) y la IA extrae:
 - Nombre del trabajador
 - Ingresos brutos y netos
 - Nombre de la empresa
@@ -17,7 +17,7 @@ Lo interesante: **la IA a veces falla**, y nosotros detectamos, verificamos y co
 
 ## Stack
 
-- **Backend:** Python + FastAPI
+- **Backend:** Python + FastAPI + uv
 - **Frontend:** Next.js 14 + Tailwind + shadcn/ui
 - **OCR/IA:** Groq (Llama 4 Scout)
 - **Base de datos:** SQLite
@@ -26,4 +26,4 @@ Lo interesante: **la IA a veces falla**, y nosotros detectamos, verificamos y co
 
 ## Estado
 
-En desarrollo — Tarea 1: Setup inicial
+En desarrollo — Tarea 2: API base lista
