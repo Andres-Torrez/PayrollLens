@@ -83,19 +83,6 @@ Este repositorio corresponde a un challenge técnico desarrollado para Kontaktu 
 
 ## Arquitectura
 
-```mermaid
-flowchart LR
-    A[Usuario] -->|Sube PDF/imagen| B[Frontend Next.js]
-    B -->|POST /api/upload| C[FastAPI Backend]
-    C --> D[Almacenamiento temporal /uploads]
-    C -->|POST /api/extract/{file_id}| E[OCR + LLM]
-    E -->|Imagen base64| F[GitHub Models / GPT-4o]
-    F -->|JSON estructurado| E
-    E --> G[Motor de validación]
-    G -->|Flags y confianza| H[(SQLite)]
-    C -->|GET /api/extractions/{file_id}| I[Respuesta al frontend]
-    I --> B
-```
 
 Flujo resumido:
 
