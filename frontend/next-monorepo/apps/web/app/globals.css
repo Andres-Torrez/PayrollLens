@@ -1,0 +1,78 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  --color-ink: #0b1220;
+  --color-ink-soft: #141c2e;
+  --color-fog: #c8d0dc;
+  --color-mist: #8b95a8;
+  --color-signal: #c8f542;
+  --color-signal-dim: #9fc41f;
+  --color-warn: #f0b429;
+  --color-danger: #f07178;
+  --color-ok: #7fd99a;
+}
+
+@keyframes nf-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes nf-pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-signal) 45%, transparent);
+  }
+  70% {
+    box-shadow: 0 0 0 18px transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+@keyframes nf-scan {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(220%);
+  }
+}
+
+.nf-fade-up {
+  animation: nf-fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.nf-fade-up-delay {
+  animation: nf-fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.12s both;
+}
+
+.nf-fade-up-delay-2 {
+  animation: nf-fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.22s both;
+}
+
+.nf-grid-bg {
+  background-color: var(--color-ink);
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -20%, #1a2744 0%, transparent 55%),
+    linear-gradient(to right, color-mix(in oklab, var(--color-fog) 6%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklab, var(--color-fog) 6%, transparent) 1px, transparent 1px);
+  background-size: auto, 48px 48px, 48px 48px;
+}
+
+.nf-scan-line {
+  position: absolute;
+  inset-inline: 12%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--color-signal), transparent);
+  animation: nf-scan 1.6s ease-in-out infinite;
+  opacity: 0.7;
+  pointer-events: none;
+}
