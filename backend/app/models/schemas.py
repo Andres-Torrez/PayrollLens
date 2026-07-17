@@ -21,6 +21,10 @@ class NominaExtraction(BaseModel):
     fecha_nomina: Optional[str] = Field(None, description="Período de la nómina (MM/YYYY o DD/MM/YYYY)")
     iban: Optional[str] = Field(None, description="IBAN completo (24 caracteres, empieza por ES)")
     es_nomina: Optional[bool] = Field(None, description="True si el documento es realmente una nómina")
+    anomalias: List[str] = Field(
+        default_factory=list,
+        description="Códigos de anomalías detectadas en el documento (p. ej. etiquetas cruzadas)",
+    )
     confidence: Literal["high", "medium", "low"] = Field("high", description="Nivel de confianza del LLM")
     raw_llm_response: Optional[str] = Field(None, description="Respuesta cruda del LLM")
 

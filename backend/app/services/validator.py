@@ -3,6 +3,28 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime
 from app.models.schemas import NominaExtraction
 
+# Formas societarias / indicios de razón social (español)
+_CORP_PATTERN = re.compile(
+    r"\b("
+    r"S\.?\s*L\.?\s*U?\.?"
+    r"|S\.?\s*A\.?"
+    r"|S\.?\s*C\.?"
+    r"|C\.?\s*B\.?"
+    r"|S\.?\s*L\.?\s*L\.?"
+    r"|SOCIEDAD\s+LIMITADA"
+    r"|SOCIEDAD\s+AN[OÓ]NIMA"
+    r"|CONSULTOR[IÍ]A"
+    r"|EMPRESA[S]?"
+    r"|AUT[OÓ]NOMO"
+    r")\b",
+    re.IGNORECASE,
+)
+
+# Bruto mensual por encima de esto es casi seguro un total anual mal extraído
+_MAX_MONTHLY_BRUTO = 25_000.0
+# Por encima de esto es sospechoso pero posible (directivos)
+_HIGH_MONTHLY_BRUTO = 15_000.0
+
 
 class ValidationFlag:
     """
@@ -19,6 +41,18 @@ class ValidationFlag:
             "reason": self.reason,
             "severity": self.severity
         }
+
+
+def _looks_like_company(name: str) -> bool:
+    return bool(_CORP_PATTERN.search(name))
+
+
+def _looks_like_person(name: str) -> bool:
+    """Heurística: 2-4 palabras, sin forma societaria."""
+    if _looks_like_company(name):
+        return False
+    words = [w for w in name.strip().split() if w]
+    return 2 <= len(words) <= 4
 
 
 def validate_iban(iban: Optional[str]) -> List[ValidationFlag]:
@@ -59,6 +93,7 @@ def validate_ingresos(brutos: Optional[float], netos: Optional[float]) -> List[V
     - Ambos deben ser números positivos
     - Netos DEBEN ser menores que brutos (si no, algo está mal)
     - La diferencia no debería ser excesiva (>50% de los brutos es sospechoso)
+    - Brutos mensuales > 25.000 € suelen ser totales anuales mal extraídos
     """
     flags = []
     
@@ -66,11 +101,31 @@ def validate_ingresos(brutos: Optional[float], netos: Optional[float]) -> List[V
         flags.append(ValidationFlag("ingresos_brutos", "Ingresos brutos no detectados", "error"))
     elif brutos <= 0:
         flags.append(ValidationFlag("ingresos_brutos", f"Ingresos brutos deben ser positivos: {brutos}", "error"))
+    elif brutos > _MAX_MONTHLY_BRUTO:
+        flags.append(ValidationFlag(
+            "ingresos_brutos",
+            f"Bruto ({brutos}) supera {_MAX_MONTHLY_BRUTO:,.0f} € mensuales. "
+            f"Probable total ANUAL extraído como nómina mensual. Revisar.",
+            "error"
+        ))
+    elif brutos > _HIGH_MONTHLY_BRUTO:
+        flags.append(ValidationFlag(
+            "ingresos_brutos",
+            f"Bruto mensual muy alto ({brutos}). Verificar que no sea un importe anual.",
+            "error"
+        ))
     
     if netos is None:
         flags.append(ValidationFlag("ingresos_netos", "Ingresos netos no detectados", "error"))
     elif netos <= 0:
         flags.append(ValidationFlag("ingresos_netos", f"Ingresos netos deben ser positivos: {netos}", "error"))
+    elif netos > _MAX_MONTHLY_BRUTO:
+        flags.append(ValidationFlag(
+            "ingresos_netos",
+            f"Neto ({netos}) supera {_MAX_MONTHLY_BRUTO:,.0f} € mensuales. "
+            f"Probable total ANUAL extraído como nómina mensual. Revisar.",
+            "error"
+        ))
     
     # Regla clave: netos < brutos
     if brutos is not None and netos is not None:
@@ -156,6 +211,7 @@ def validate_nombre(nombre: Optional[str]) -> List[ValidationFlag]:
     - No vacío
     - Al menos 2 palabras (nombre + apellido)
     - Sin caracteres numéricos (salvo DNI en el mismo campo, que filtramos)
+    - No debe parecer una razón social (S.L., S.A., etc.)
     """
     flags = []
     
@@ -173,6 +229,14 @@ def validate_nombre(nombre: Optional[str]) -> List[ValidationFlag]:
     # No debería contener números (a menos que sea DNI mezclado)
     if re.search(r'\d{3,}', clean):
         flags.append(ValidationFlag("nombre_trabajador", f"Nombre contiene secuencia numérica (posible DNI mezclado): '{nombre}'", "warning"))
+
+    if _looks_like_company(clean):
+        flags.append(ValidationFlag(
+            "nombre_trabajador",
+            f"El trabajador parece una razón social, no una persona: '{nombre}'. "
+            f"Posible confusión empresa/trabajador.",
+            "error"
+        ))
     
     return flags
 
@@ -185,6 +249,7 @@ def validate_empresa(empresa: Optional[str]) -> List[ValidationFlag]:
     - No vacío
     - Más de 2 caracteres
     - No debería ser solo números
+    - Si parece solo un nombre de persona (sin forma societaria), avisar
     """
     flags = []
     
@@ -199,7 +264,37 @@ def validate_empresa(empresa: Optional[str]) -> List[ValidationFlag]:
     
     if clean.isdigit():
         flags.append(ValidationFlag("nombre_empresa", f"Nombre de empresa solo contiene números: '{empresa}'", "error"))
+
+    if _looks_like_person(clean) and not _looks_like_company(clean):
+        flags.append(ValidationFlag(
+            "nombre_empresa",
+            f"La empresa parece un nombre de persona, no una razón social: '{empresa}'. "
+            f"Posible confusión empresa/trabajador.",
+            "error"
+        ))
     
+    return flags
+
+
+def validate_empresa_trabajador_coherence(
+    trabajador: Optional[str],
+    empresa: Optional[str],
+) -> List[ValidationFlag]:
+    """
+    Detecta el cruce típico: trabajador = S.L. y empresa = nombre de persona.
+    """
+    flags = []
+    if not trabajador or not empresa:
+        return flags
+
+    t = trabajador.strip()
+    e = empresa.strip()
+    if _looks_like_company(t) and _looks_like_person(e):
+        flags.append(ValidationFlag(
+            "nombre_trabajador",
+            f"Campos cruzados: trabajador='{t}' parece empresa y empresa='{e}' parece persona. Revisar.",
+            "error"
+        ))
     return flags
 
 
@@ -227,6 +322,49 @@ def validate_es_nomina(es_nomina: Optional[bool]) -> List[ValidationFlag]:
     return flags
 
 
+_ANOMALIA_MESSAGES = {
+    "importes_anuales_en_documento": (
+        "ingresos_brutos",
+        "El documento muestra importes anuales (o el mensual solo aparece en una nota). Requiere revisión humana.",
+    ),
+    "etiquetas_empresa_trabajador_cruzadas": (
+        "nombre_trabajador",
+        "Etiquetas de empresa/trabajador cruzadas o inconsistentes en el documento. Requiere revisión humana.",
+    ),
+}
+
+
+def validate_anomalias(anomalias: Optional[List[str]]) -> List[ValidationFlag]:
+    """Convierte anomalías reportadas por el LLM en flags de error."""
+    flags = []
+    if not anomalias:
+        return flags
+
+    for code in anomalias:
+        mapped = _ANOMALIA_MESSAGES.get(code)
+        if mapped:
+            field, reason = mapped
+            flags.append(ValidationFlag(field, reason, "error"))
+        else:
+            flags.append(ValidationFlag(
+                "anomalias",
+                f"Anomalía reportada por el extractor: '{code}'. Revisar.",
+                "error",
+            ))
+    return flags
+
+
+def validate_llm_confidence(confidence: Optional[str]) -> List[ValidationFlag]:
+    """Si el propio LLM marca confianza baja, forzar revisión humana."""
+    if confidence == "low":
+        return [ValidationFlag(
+            "confidence",
+            "El extractor marcó confianza baja (documento ambiguo o corrección aplicada). Revisar.",
+            "error",
+        )]
+    return []
+
+
 def validate_extraction(extraction: NominaExtraction) -> Dict[str, Any]:
     """
     Función principal de validación.
@@ -241,6 +379,8 @@ def validate_extraction(extraction: NominaExtraction) -> Dict[str, Any]:
     
     # Guardrail principal: ¿es realmente una nómina?
     all_flags.extend(validate_es_nomina(extraction.es_nomina))
+    all_flags.extend(validate_anomalias(extraction.anomalias))
+    all_flags.extend(validate_llm_confidence(extraction.confidence))
     
     # Validar cada campo (solo si el documento parece una nómina)
     if extraction.es_nomina is not False:
@@ -249,6 +389,10 @@ def validate_extraction(extraction: NominaExtraction) -> Dict[str, Any]:
         all_flags.extend(validate_fecha(extraction.fecha_nomina))
         all_flags.extend(validate_nombre(extraction.nombre_trabajador))
         all_flags.extend(validate_empresa(extraction.nombre_empresa))
+        all_flags.extend(validate_empresa_trabajador_coherence(
+            extraction.nombre_trabajador,
+            extraction.nombre_empresa,
+        ))
     
     # Determinar confianza global
     errors = [f for f in all_flags if f.severity == "error"]
@@ -274,6 +418,7 @@ def validate_extraction(extraction: NominaExtraction) -> Dict[str, Any]:
             "ingresos_netos": extraction.ingresos_netos,
             "fecha_nomina": extraction.fecha_nomina,
             "iban": extraction.iban,
+            "anomalias": extraction.anomalias,
         },
         "flags": [f.to_dict() for f in all_flags],
         "overall_confidence": overall_confidence,
