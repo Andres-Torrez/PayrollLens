@@ -203,6 +203,30 @@ def validate_empresa(empresa: Optional[str]) -> List[ValidationFlag]:
     return flags
 
 
+def validate_es_nomina(es_nomina: Optional[bool]) -> List[ValidationFlag]:
+    """
+    Valida que el documento procesado sea realmente una nómina.
+    Este es el guardrail principal contra alucinaciones del LLM
+    cuando se sube un documento que no es una nómina.
+    """
+    flags = []
+
+    if es_nomina is None:
+        flags.append(ValidationFlag(
+            "es_nomina",
+            "No se pudo determinar si el documento es una nómina. Revisar manualmente.",
+            "warning"
+        ))
+    elif es_nomina is False:
+        flags.append(ValidationFlag(
+            "es_nomina",
+            "El documento no parece ser una nómina española. No se deben confiar en los datos extraídos.",
+            "error"
+        ))
+
+    return flags
+
+
 def validate_extraction(extraction: NominaExtraction) -> Dict[str, Any]:
     """
     Función principal de validación.
@@ -215,12 +239,16 @@ def validate_extraction(extraction: NominaExtraction) -> Dict[str, Any]:
     """
     all_flags: List[ValidationFlag] = []
     
-    # Validar cada campo
-    all_flags.extend(validate_iban(extraction.iban))
-    all_flags.extend(validate_ingresos(extraction.ingresos_brutos, extraction.ingresos_netos))
-    all_flags.extend(validate_fecha(extraction.fecha_nomina))
-    all_flags.extend(validate_nombre(extraction.nombre_trabajador))
-    all_flags.extend(validate_empresa(extraction.nombre_empresa))
+    # Guardrail principal: ¿es realmente una nómina?
+    all_flags.extend(validate_es_nomina(extraction.es_nomina))
+    
+    # Validar cada campo (solo si el documento parece una nómina)
+    if extraction.es_nomina is not False:
+        all_flags.extend(validate_iban(extraction.iban))
+        all_flags.extend(validate_ingresos(extraction.ingresos_brutos, extraction.ingresos_netos))
+        all_flags.extend(validate_fecha(extraction.fecha_nomina))
+        all_flags.extend(validate_nombre(extraction.nombre_trabajador))
+        all_flags.extend(validate_empresa(extraction.nombre_empresa))
     
     # Determinar confianza global
     errors = [f for f in all_flags if f.severity == "error"]
@@ -239,6 +267,7 @@ def validate_extraction(extraction: NominaExtraction) -> Dict[str, Any]:
     # Preparar respuesta
     result = {
         "validated_data": {
+            "es_nomina": extraction.es_nomina,
             "nombre_trabajador": extraction.nombre_trabajador,
             "nombre_empresa": extraction.nombre_empresa,
             "ingresos_brutos": extraction.ingresos_brutos,

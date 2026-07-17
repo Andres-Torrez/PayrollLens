@@ -32,6 +32,7 @@ def _record_to_dict(record) -> dict:
         "filename": record.filename,
         "mime_type": record.mime_type,
         "size_bytes": record.size_bytes,
+        "es_nomina": record.es_nomina,
         "nombre_trabajador": record.nombre_trabajador,
         "nombre_empresa": record.nombre_empresa,
         "ingresos_brutos": record.ingresos_brutos,

@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Literal
 from datetime import datetime
 
 
@@ -20,7 +20,8 @@ class NominaExtraction(BaseModel):
     ingresos_netos: Optional[float] = Field(None, description="Total neto a percibir")
     fecha_nomina: Optional[str] = Field(None, description="Período de la nómina (MM/YYYY o DD/MM/YYYY)")
     iban: Optional[str] = Field(None, description="IBAN completo (24 caracteres, empieza por ES)")
-    confidence: str = Field("high", description="high | medium | low")
+    es_nomina: Optional[bool] = Field(None, description="True si el documento es realmente una nómina")
+    confidence: Literal["high", "medium", "low"] = Field("high", description="Nivel de confianza del LLM")
     raw_llm_response: Optional[str] = Field(None, description="Respuesta cruda del LLM")
 
 
@@ -39,8 +40,8 @@ class ValidationResult(BaseModel):
     """
     validated_data: Dict[str, Any]
     flags: List[Dict[str, str]]
-    overall_confidence: str  # high | medium | low
-    status: str  # validated | needs_review | error
+    overall_confidence: Literal["high", "medium", "low"]
+    status: Literal["validated", "needs_review", "error"]
     flag_count: Dict[str, int]
     extraction_metadata: Optional[ExtractionMetadata] = None
 
@@ -63,10 +64,11 @@ class ExtractionRecord(BaseModel):
     ingresos_netos: Optional[float]
     fecha_nomina: Optional[str]
     iban: Optional[str]
+    es_nomina: Optional[bool]
     
     # Estado del proceso
-    overall_confidence: str
-    status: str
+    overall_confidence: Literal["high", "medium", "low"]
+    status: Literal["validated", "needs_review", "error"]
     validation_flags: List[Dict[str, Any]]  # Se parsea desde JSON string
     
     # Timestamps

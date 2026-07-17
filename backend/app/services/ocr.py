@@ -67,14 +67,17 @@ Analiza TODAS las páginas de la imagen de esta nómina y extrae los siguientes 
 
 REGLAS ESTRICTAS:
 1. Devuelve ÚNICAMENTE un objeto JSON válido. Sin texto explicativo antes ni después.
-2. Si un campo no está visible o es ilegible, usa null.
-3. Los ingresos deben ser números (float), sin símbolos €. Ejemplo: 2450.67
-4. El IBAN debe tener exactamente 24 caracteres y empezar por ES (quita espacios).
-5. Si detectas que algún campo es dudoso, borroso o incierto, usa "confidence": "low".
+2. Primero decide si el documento ES UNA NÓMINA ESPAÑOLA. Usa "es_nomina": true solo si ves conceptos propios de nómina (devengos, liquidación, IRPF, SS, líquido a percibir, etc.). Si es otra cosa (factura, DNI, contrato, recibo genérico), usa "es_nomina": false.
+3. Si "es_nomina" es false, el resto de campos pueden ser null.
+4. Si un campo no está visible o es ilegible, usa null.
+5. Los ingresos deben ser números (float), sin símbolos €. Ejemplo: 2450.67
+6. El IBAN debe tener exactamente 24 caracteres y empezar por ES (quita espacios).
+7. Si detectas que algún campo es dudoso, borroso o incierto, usa "confidence": "low".
    Si todo está claro, usa "confidence": "high".
 
 Formato obligatorio (solo este JSON, nada más):
 {
+  "es_nomina": true | false,
   "nombre_trabajador": "string o null",
   "nombre_empresa": "string o null",
   "ingresos_brutos": number o null,
@@ -124,6 +127,7 @@ Formato obligatorio (solo este JSON, nada más):
         data = json.loads(json_str)
 
         extraction = NominaExtraction(
+            es_nomina=data.get("es_nomina"),
             nombre_trabajador=data.get("nombre_trabajador"),
             nombre_empresa=data.get("nombre_empresa"),
             ingresos_brutos=data.get("ingresos_brutos"),

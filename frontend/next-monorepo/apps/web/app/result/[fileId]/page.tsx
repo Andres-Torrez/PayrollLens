@@ -10,6 +10,7 @@ type Flag = { field: string; reason: string; severity: string }
 type ExtractionRecord = {
   id: string
   filename: string
+  es_nomina: boolean | null
   nombre_trabajador: string | null
   nombre_empresa: string | null
   ingresos_brutos: number | null

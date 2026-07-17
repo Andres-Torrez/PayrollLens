@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-from sqlalchemy import create_engine, Column, String, Float, DateTime, Text, Integer
+from sqlalchemy import create_engine, Column, String, Float, DateTime, Text, Integer, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
@@ -42,6 +42,7 @@ class ExtractionDB(Base):
     ingresos_netos = Column(Float, nullable=True)
     fecha_nomina = Column(String, nullable=True)
     iban = Column(String, nullable=True)
+    es_nomina = Column(Boolean, nullable=True)
 
     # Metadata del proceso
     raw_llm_response = Column(Text, nullable=True)  # Respuesta cruda del LLM

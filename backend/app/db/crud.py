@@ -22,6 +22,7 @@ def save_extraction(
     
     if db_extraction:
         # Actualizar existente
+        db_extraction.es_nomina = extraction.es_nomina
         db_extraction.nombre_trabajador = extraction.nombre_trabajador
         db_extraction.nombre_empresa = extraction.nombre_empresa
         db_extraction.ingresos_brutos = extraction.ingresos_brutos
@@ -40,6 +41,7 @@ def save_extraction(
             filename=filename,
             mime_type=mime_type,
             size_bytes=size_bytes,
+            es_nomina=extraction.es_nomina,
             nombre_trabajador=extraction.nombre_trabajador,
             nombre_empresa=extraction.nombre_empresa,
             ingresos_brutos=extraction.ingresos_brutos,
