@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.env
+.venv/
+venv/
+ENV/
+*.egg-info/
+*.dist-info/
+
+# Node
+node_modules/
+.next/
+out/
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Uploads (no subimos archivos de usuario al repo)
+backend/uploads/
+
+# SQLite local
+*.db
+*.db-journal
+
+# uv
+uv.lock
